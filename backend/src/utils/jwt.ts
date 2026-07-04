@@ -3,7 +3,7 @@ import type { SignOptions } from "jsonwebtoken";
 import type { StringValue } from "ms";
 
 type JwtPayload = {
-  id: string;
+  id: number;
   email: string;
   role: string;
 };
