@@ -1,6 +1,9 @@
 import prisma from "../../config/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import type { TaskStatus } from "../../generated/prisma/client.js";
+import { emitTaskCreated } from "../../realtime/socket.js";
+import { emitTaskUpdated } from "../../realtime/socket.js";
+import { emitTaskDeleted } from "../../realtime/socket.js";
 
 type AuthUser = {
     id: number;
@@ -84,63 +87,65 @@ export const createTaskService = async (
         include: taskInclude,
     });
 
+    emitTaskCreated(task);
+
     return task;
 };
 
 export const getTasksService = async (
-  query: TaskListQuery,
-  user: AuthUser
+    query: TaskListQuery,
+    user: AuthUser
 ) => {
-  const page = query.page;
-  const limit = query.limit;
-  const skip = (page - 1) * limit;
+    const page = query.page;
+    const limit = query.limit;
+    const skip = (page - 1) * limit;
 
-  const where: {
-    status?: TaskStatus;
-    ownerId?: number;
-  } = {};
+    const where: {
+        status?: TaskStatus;
+        ownerId?: number;
+    } = {};
 
-  if (query.status) {
-    where.status = query.status;
-  }
-
-  if (user.role === "ADMIN") {
-    if (query.ownerId) {
-      await ensureOwnerExists(query.ownerId);
-      where.ownerId = query.ownerId;
-    }
-  } else {
-    if (query.ownerId && query.ownerId !== user.id) {
-      throw new AppError("Forbidden: users can only filter their own tasks", 403);
+    if (query.status) {
+        where.status = query.status;
     }
 
-    where.ownerId = user.id;
-  }
+    if (user.role === "ADMIN") {
+        if (query.ownerId) {
+            await ensureOwnerExists(query.ownerId);
+            where.ownerId = query.ownerId;
+        }
+    } else {
+        if (query.ownerId && query.ownerId !== user.id) {
+            throw new AppError("Forbidden: users can only filter their own tasks", 403);
+        }
 
-  const [tasks, totalItems] = await prisma.$transaction([
-    prisma.task.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: taskInclude,
-    }),
-    prisma.task.count({
-      where,
-    }),
-  ]);
+        where.ownerId = user.id;
+    }
 
-  return {
-    tasks,
-    pagination: {
-      page,
-      limit,
-      totalItems,
-      totalPages: Math.ceil(totalItems / limit),
-    },
-  };
+    const [tasks, totalItems] = await prisma.$transaction([
+        prisma.task.findMany({
+            where,
+            skip,
+            take: limit,
+            orderBy: {
+                createdAt: "desc",
+            },
+            include: taskInclude,
+        }),
+        prisma.task.count({
+            where,
+        }),
+    ]);
+
+    return {
+        tasks,
+        pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+        },
+    };
 };
 
 export const getTaskByIdService = async (id: number, user: AuthUser) => {
@@ -202,6 +207,8 @@ export const updateTaskService = async (
         include: taskInclude,
     });
 
+    emitTaskUpdated(updatedTask);
+
     return updatedTask;
 };
 
@@ -223,4 +230,11 @@ export const deleteTaskService = async (id: number, user: AuthUser) => {
             id,
         },
     });
+
+    emitTaskDeleted({
+        id: existingTask.id,
+        ownerId: existingTask.ownerId
+    })
+
+    return existingTask;
 };

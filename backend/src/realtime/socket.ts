@@ -76,7 +76,7 @@ export const initSocket = (server: HttpServer) => {
                 return next(new Error("Authentication required"));
             }
 
-            const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as AccessTokenPayload;
+            const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string) as AccessTokenPayload;
 
             const userId = Number(decoded.userId ?? decoded.id ?? decoded.sub);
             const role = decoded.role;
