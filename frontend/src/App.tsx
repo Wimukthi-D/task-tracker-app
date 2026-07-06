@@ -1,20 +1,26 @@
-import { Box, Button, Container, Typography } from "@mui/material";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import TasksPage from "./pages/TasksPage";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 function App() {
   return (
-    <Container maxWidth="md">
-      <Box sx={{ mt: 8, textAlign: "center" }}>
-        <Typography variant="h3" gutterBottom>
-          Task Tracker
-        </Typography>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Navigate to="/tasks" replace />} />
 
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          Frontend setup is working.
-        </Typography>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-        <Button variant="contained">MUI Button</Button>
-      </Box>
-    </Container>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/tasks" element={<TasksPage />} />
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
