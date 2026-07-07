@@ -19,6 +19,7 @@ type AccessTokenPayload = jwt.JwtPayload & {
 type TaskEventPayload = {
     id: number;
     title: string;
+    actor: string;
     description: string | null;
     status: string;
     dueDate: Date;
@@ -28,7 +29,9 @@ type TaskEventPayload = {
 
 type TaskDeletedEventPayload = {
     id: number;
+    title: string;
     ownerId: number;
+    actor: string;
 };
 
 type ServerToClientEvents = {

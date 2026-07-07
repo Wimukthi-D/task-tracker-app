@@ -10,6 +10,7 @@ export type Task = {
     dueDate: string;
     ownerId: number;
     owner: User;
+    actor?: string;
     createdAt?: string;
     updatedAt?: string;
 };

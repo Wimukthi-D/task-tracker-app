@@ -1,26 +1,24 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     Accordion,
     AccordionDetails,
     AccordionSummary,
-    Alert,
     Box,
     Button,
     Chip,
-    Grid,
     MenuItem,
     Stack,
     TextField,
     Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import DeleteIcon from '@mui/icons-material/Delete';
-import SaveIcon from "@mui/icons-material/Save";
 import type {
     Task,
     TaskStatus,
     UpdateTaskRequest,
 } from "../../types/task.types";
+
+const statusOptions: TaskStatus[] = ["TODO", "IN_PROGRESS", "COMPLETED"];
 
 type TaskListItemProps = {
     task: Task;
@@ -29,33 +27,20 @@ type TaskListItemProps = {
     onDelete: (id: number) => Promise<void>;
 };
 
-type EditErrors = {
-    title?: string;
-    dueDate?: string;
-    ownerId?: string;
-    form?: string;
+type TaskEditForm = {
+    title: string;
+    description: string;
+    status: TaskStatus;
+    dueDate: string;
+    ownerId: string;
 };
 
-const statusOptions: TaskStatus[] = ["TODO", "IN_PROGRESS", "COMPLETED"];
-
-const getStatusColor = (status: TaskStatus) => {
-    if (status === "COMPLETED") {
-        return "success";
-    }
-
-    if (status === "IN_PROGRESS") {
-        return "warning";
-    }
-
-    return "default";
+const formatDateForInput = (date: string) => {
+    return date ? date.slice(0, 10) : "";
 };
 
-const formatDateForInput = (value: string) => {
-    if (!value) {
-        return "";
-    }
-
-    return value.slice(0, 10);
+const formatDateForDisplay = (date: string) => {
+    return new Date(date).toLocaleDateString();
 };
 
 const TaskListItem = ({
@@ -64,87 +49,109 @@ const TaskListItem = ({
     onUpdate,
     onDelete,
 }: TaskListItemProps) => {
-    const [title, setTitle] = useState(task.title);
-    const [description, setDescription] = useState(task.description || "");
-    const [status, setStatus] = useState<TaskStatus>(task.status);
-    const [dueDate, setDueDate] = useState(formatDateForInput(task.dueDate));
-    const [ownerId, setOwnerId] = useState(String(task.ownerId));
-
-    const [errors, setErrors] = useState<EditErrors>({});
-    const [isUpdating, setIsUpdating] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    const initialValues = useMemo<TaskEditForm>(
+        () => ({
+            title: task.title,
+            description: task.description ?? "",
+            status: task.status,
+            dueDate: formatDateForInput(task.dueDate),
+            ownerId: String(task.ownerId),
+        }),
+        [
+            task.title,
+            task.description,
+            task.status,
+            task.dueDate,
+            task.ownerId,
+        ]
+    );
+
+    const [form, setForm] = useState<TaskEditForm>(initialValues);
+
     useEffect(() => {
-        setTitle(task.title);
-        setDescription(task.description || "");
-        setStatus(task.status);
-        setDueDate(formatDateForInput(task.dueDate));
-        setOwnerId(String(task.ownerId));
-    }, [task]);
+        setForm(initialValues);
+        setIsEditing(false);
+    }, [initialValues]);
 
-    const validateForm = () => {
-        const nextErrors: EditErrors = {};
+    const hasChanges =
+        form.title !== initialValues.title ||
+        form.description !== initialValues.description ||
+        form.status !== initialValues.status ||
+        form.dueDate !== initialValues.dueDate ||
+        (isAdmin && form.ownerId !== initialValues.ownerId);
 
-        if (!title.trim()) {
-            nextErrors.title = "Title is required.";
-        }
+    const isOwnerIdValid =
+        !isAdmin ||
+        (Number.isInteger(Number(form.ownerId)) && Number(form.ownerId) > 0);
 
-        if (!dueDate) {
-            nextErrors.dueDate = "Due date is required.";
-        }
+    const isFormValid =
+        form.title.trim().length > 0 &&
+        Boolean(form.dueDate) &&
+        isOwnerIdValid;
 
-        if (isAdmin && Number(ownerId) <= 0) {
-            nextErrors.ownerId = "Owner ID must be a valid number.";
-        }
+    const isUpdateDisabled = !hasChanges || !isFormValid || isSaving;
 
-        setErrors(nextErrors);
-
-        return Object.keys(nextErrors).length === 0;
+    const handleChange = <K extends keyof TaskEditForm>(
+        field: K,
+        value: TaskEditForm[K]
+    ) => {
+        setForm((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
     };
 
-    const handleUpdate = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+    const handleCancel = () => {
+        setForm(initialValues);
+        setIsEditing(false);
+    };
 
-        if (!validateForm()) {
+    const handleUpdate = async () => {
+        if (isUpdateDisabled) {
             return;
         }
 
-        setIsUpdating(true);
+        const payload: UpdateTaskRequest = {};
+
+        if (form.title !== initialValues.title) {
+            payload.title = form.title.trim();
+        }
+
+        if (form.description !== initialValues.description) {
+            payload.description = form.description.trim();
+        }
+
+        if (form.status !== initialValues.status) {
+            payload.status = form.status;
+        }
+
+        if (form.dueDate !== initialValues.dueDate) {
+            payload.dueDate = form.dueDate;
+        }
+
+        if (isAdmin && form.ownerId !== initialValues.ownerId) {
+            payload.ownerId = Number(form.ownerId);
+        }
+
+        setIsSaving(true);
 
         try {
-            await onUpdate(task.id, {
-                title: title.trim(),
-                description: description.trim(),
-                status,
-                dueDate,
-                ownerId: isAdmin ? Number(ownerId) : undefined,
-            });
-
-            setErrors({});
-        } catch {
-            setErrors({
-                form: "Failed to update task. Please try again.",
-            });
+            await onUpdate(task.id, payload);
+            setIsEditing(false);
         } finally {
-            setIsUpdating(false);
+            setIsSaving(false);
         }
     };
 
     const handleDelete = async () => {
-        const confirmed = window.confirm("Are you sure you want to delete this task?");
-
-        if (!confirmed) {
-            return;
-        }
-
         setIsDeleting(true);
 
         try {
             await onDelete(task.id);
-        } catch {
-            setErrors({
-                form: "Failed to delete task. Please try again.",
-            });
         } finally {
             setIsDeleting(false);
         }
@@ -165,144 +172,185 @@ const TaskListItem = ({
         >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Stack
-                    direction={{ xs: "column", sm: "row" }}
+                    direction={{ xs: "column", md: "row" }}
                     spacing={1.5}
-                    sx={{ width: "100%", pr: 2, alignItems: { xs: "flex-start", sm: "center" } }}
+                    sx={{
+                        width: "100%",
+                        pr: 2,
+                        alignItems: { xs: "flex-start", md: "center" },
+                    }}
                 >
-                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                        <Typography sx={{ fontWeight: 700 }} noWrap>
-                            {task.title}
-                        </Typography>
+                    <Box sx={{ flex: 1 }}>
+                        <Typography sx={{ fontWeight: 700 }}>{task.title}</Typography>
 
-                        <Typography variant="body2" color="text.secondary">
-                            Due: {formatDateForInput(task.dueDate)} • Owner ID: {task.ownerId}
-                        </Typography>
+                        <Box sx={{
+                            display: "flex",
+                            flexDirection: "row",
+                            gap: 2,
+                        }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Due date: {formatDateForDisplay(task.dueDate)}
+                            </Typography>
+                            {isAdmin && (
+                                <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ minWidth: { md: 180 } }}
+                                >
+                                    Assigned to: {task.owner?.name ?? "Unknown user"}
+                                </Typography>
+                            )}
+                        </Box>
+
                     </Box>
 
                     <Chip
                         label={task.status.replace("_", " ")}
-                        color={getStatusColor(task.status)}
                         size="small"
+                        color={
+                            task.status === "COMPLETED"
+                                ? "success"
+                                : task.status === "IN_PROGRESS"
+                                    ? "info"
+                                    : "default"
+                        }
                     />
                 </Stack>
             </AccordionSummary>
 
-            <AccordionDetails sx={{ borderTop: "1px solid", borderColor: "divider" }}>
-                {errors.form && (
-                    <Alert severity="error" sx={{ mb: 2 }}>
-                        {errors.form}
-                    </Alert>
-                )}
+            <AccordionDetails>
+                {!isEditing ? (
+                    <Stack spacing={2}>
+                        <Typography color="text.secondary">
+                            {task.description || "No description provided."}
+                        </Typography>
 
-                <Box component="form" onSubmit={handleUpdate} noValidate>
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                label="Title"
-                                value={title}
-                                onChange={(event) => {
-                                    setTitle(event.target.value);
-                                    setErrors((prev) => ({ ...prev, title: undefined }));
-                                }}
-                                error={Boolean(errors.title)}
-                                helperText={errors.title || " "}
-                                required
-                            />
-                        </Grid>
-
-                        <Grid size={{ xs: 12, md: 3 }}>
-                            <TextField
-                                select
-                                label="Status"
-                                value={status}
-                                onChange={(event) =>
-                                    setStatus(event.target.value as TaskStatus)
-                                }
+                        <Stack
+                            direction="row"
+                            spacing={1}
+                            sx={{ justifyContent: "flex-end" }}
+                        >
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => setIsEditing(true)}
                             >
-                                {statusOptions.map((option) => (
-                                    <MenuItem key={option} value={option}>
-                                        {option.replace("_", " ")}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
-                        </Grid>
+                                Edit
+                            </Button>
 
-                        <Grid size={{ xs: 12, md: 3 }}>
-                            <TextField
-                                label="Due Date"
-                                type="date"
-                                value={dueDate}
-                                onChange={(event) => {
-                                    setDueDate(event.target.value);
-                                    setErrors((prev) => ({ ...prev, dueDate: undefined }));
-                                }}
-                                error={Boolean(errors.dueDate)}
-                                helperText={errors.dueDate || " "}
-                                slotProps={{
-                                    inputLabel: {
-                                        shrink: true,
-                                    },
-                                }}
-                                required
-                            />
-                        </Grid>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                size="small"
+                                onClick={handleDelete}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? "Deleting..." : "Delete"}
+                            </Button>
+                        </Stack>
+                    </Stack>
+                ) : (
+                    <Stack spacing={2}>
+                        <TextField
+                            label="Title"
+                            value={form.title}
+                            onChange={(event) =>
+                                handleChange("title", event.target.value)
+                            }
+                            fullWidth
+                            required
+                        />
+
+                        <TextField
+                            label="Description"
+                            value={form.description}
+                            onChange={(event) =>
+                                handleChange("description", event.target.value)
+                            }
+                            fullWidth
+                            multiline
+                            minRows={3}
+                        />
+
+                        <TextField
+                            select
+                            label="Status"
+                            value={form.status}
+                            onChange={(event) =>
+                                handleChange(
+                                    "status",
+                                    event.target.value as TaskStatus
+                                )
+                            }
+                            fullWidth
+                        >
+                            {statusOptions.map((status) => (
+                                <MenuItem key={status} value={status}>
+                                    {status.replace("_", " ")}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+
+                        <TextField
+                            label="Due Date"
+                            type="date"
+                            value={form.dueDate}
+                            onChange={(event) =>
+                                handleChange("dueDate", event.target.value)
+                            }
+                            fullWidth
+                            required
+                            slotProps={{
+                                inputLabel: {
+                                    shrink: true,
+                                },
+                            }}
+                        />
 
                         {isAdmin && (
-                            <Grid size={{ xs: 12, md: 3 }}>
-                                <TextField
-                                    label="Owner ID"
-                                    type="number"
-                                    value={ownerId}
-                                    onChange={(event) => {
-                                        setOwnerId(event.target.value);
-                                        setErrors((prev) => ({ ...prev, ownerId: undefined }));
-                                    }}
-                                    error={Boolean(errors.ownerId)}
-                                    helperText={errors.ownerId || " "}
-                                />
-                            </Grid>
+                            <TextField
+                                label="Assigned User ID"
+                                type="number"
+                                value={form.ownerId}
+                                onChange={(event) =>
+                                    handleChange("ownerId", event.target.value)
+                                }
+                                fullWidth
+                                required
+                                error={!isOwnerIdValid}
+                                helperText={
+                                    !isOwnerIdValid
+                                        ? "Assigned User ID must be a valid positive number."
+                                        : ""
+                                }
+                            />
                         )}
 
-                        <Grid size={{ xs: 12 }}>
-                            <TextField
-                                label="Description"
-                                value={description}
-                                onChange={(event) => setDescription(event.target.value)}
-                                multiline
-                                minRows={3}
-                            />
-                        </Grid>
-
-                        <Grid size={{ xs: 12 }}>
-                            <Stack
-                                direction={{ xs: "column", sm: "row" }}
-                                spacing={1.5}
-                                sx={{
-                                    justifyContent: "flex-end"
-                                }}
+                        <Stack
+                            direction="row"
+                            spacing={1}
+                            sx={{ justifyContent: "flex-end" }}
+                        >
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={handleUpdate}
+                                disabled={isUpdateDisabled}
                             >
-                                <Button
-                                    color="error"
-                                    variant="outlined"
-                                    startIcon={<DeleteIcon />}
-                                    onClick={handleDelete}
-                                    disabled={isDeleting || isUpdating}
-                                >
-                                    {isDeleting ? "Deleting..." : "Delete"}
-                                </Button>
+                                {isSaving ? "Updating..." : "Update"}
+                            </Button>
 
-                                <Button
-                                    type="submit"
-                                    variant="contained"
-                                    startIcon={<SaveIcon />}
-                                    disabled={isUpdating || isDeleting}
-                                >
-                                    {isUpdating ? "Updating..." : "Update"}
-                                </Button>
-                            </Stack>
-                        </Grid>
-                    </Grid>
-                </Box>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={handleCancel}
+                                disabled={isSaving}
+                            >
+                                Cancel
+                            </Button>
+                        </Stack>
+                    </Stack>
+                )}
             </AccordionDetails>
         </Accordion>
     );

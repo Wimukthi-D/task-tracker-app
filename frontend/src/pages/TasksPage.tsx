@@ -29,6 +29,10 @@ import type {
     TaskStatus,
     UpdateTaskRequest,
 } from "../types/task.types";
+import { connectSocket } from "../realtime/socket";
+import StackedSnackbar, {
+    type AppNotification,
+} from "../components/StackedSnackbar";
 
 const statusOptions: TaskStatus[] = ["TODO", "IN_PROGRESS", "COMPLETED"];
 
@@ -48,6 +52,8 @@ const TasksPage = () => {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [pageError, setPageError] = useState("");
+
+    const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
     const loadTasks = useCallback(async () => {
         if (!accessToken) {
@@ -77,6 +83,76 @@ const TasksPage = () => {
     useEffect(() => {
         loadTasks();
     }, [loadTasks]);
+
+    const addNotification = (
+        message: string,
+        severity: AppNotification["severity"] = "info"
+    ) => {
+        setNotifications((prev) => [
+            ...prev,
+            {
+                id: Date.now() + Math.random(),
+                message,
+                severity,
+                open: true,
+            },
+        ]);
+    };
+
+    const closeNotification = (id: number) => {
+        setNotifications((prev) =>
+            prev.map((notification) =>
+                notification.id === id
+                    ? {
+                        ...notification,
+                        open: false,
+                    }
+                    : notification
+            )
+        );
+    };
+
+    const removeNotification = (id: number) => {
+        setNotifications((prev) =>
+            prev.filter((notification) => notification.id !== id)
+        );
+    };
+
+    useEffect(() => {
+        if (!accessToken) {
+            return;
+        }
+
+        const socket = connectSocket(accessToken);
+
+
+        // socket.on("connect_error", (error) => {
+        //     addNotification("Realtime connection failed.", error);
+        // });
+
+        socket.on("task:created", async (task) => {
+            addNotification(`${task.title}" was created by ${task.actor}.`, "success");
+            await loadTasks();
+        });
+
+        socket.on("task:updated", async (task) => {
+            addNotification(`${task.title} was updated by ${task.actor}.`, "info");
+            await loadTasks();
+        });
+
+        socket.on("task:deleted", async (payload) => {
+            addNotification(`Task #${payload.id} was deleted.`, "warning");
+            await loadTasks();
+        });
+
+        return () => {
+            socket.off("connect");
+            socket.off("connect_error");
+            socket.off("task:created");
+            socket.off("task:updated");
+            socket.off("task:deleted");
+        };
+    }, [accessToken, loadTasks]);
 
     const handleCreateTask = async (data: CreateTaskRequest) => {
         if (!accessToken) {
@@ -193,7 +269,7 @@ const TasksPage = () => {
 
                         {isAdmin && (
                             <TextField
-                                label="Filter by Owner ID"
+                                label="Filter by Assigned User"
                                 type="number"
                                 value={ownerFilter}
                                 onChange={(event) => handleOwnerFilterChange(event.target.value)}
@@ -292,6 +368,13 @@ const TasksPage = () => {
                 onClose={() => setIsCreateOpen(false)}
                 onCreate={handleCreateTask}
             />
+
+            <StackedSnackbar
+                notifications={notifications}
+                onClose={closeNotification}
+                onExited={removeNotification}
+            />
+
         </AppLayout>
     );
 };

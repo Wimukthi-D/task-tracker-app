@@ -46,6 +46,25 @@ const taskInclude = {
     },
 };
 
+const getActor = async (userId: number) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            name: true,
+            role: true,
+        },
+    });
+
+    if (!user) {
+        return "Unknown user";
+    }
+
+    return `${user.name} (${user.role})`;
+};
+
+
 const ensureOwnerExists = async (ownerId: number) => {
     const owner = await prisma.user.findUnique({
         where: {
@@ -86,8 +105,9 @@ export const createTaskService = async (
         },
         include: taskInclude,
     });
+    const actor = await getActor(user.id);
 
-    emitTaskCreated(task);
+    emitTaskCreated({ ...task, actor });
 
     return task;
 };
@@ -184,7 +204,7 @@ export const updateTaskService = async (
 
     let ownerId = existingTask.ownerId;
 
-    if (data.ownerId) {
+    if (data.ownerId !== undefined) {
         if (user.role !== "ADMIN") {
             throw new AppError("Only admins can change task owner", 403);
         }
@@ -198,16 +218,25 @@ export const updateTaskService = async (
             id,
         },
         data: {
-            ...(data.title ? { title: data.title } : {}),
-            ...(data.description ? { description: data.description } : {}),
-            ...(data.status ? { status: data.status } : {}),
-            ...(data.dueDate ? { dueDate: new Date(data.dueDate) } : {}),
+            ...(data.title !== undefined ? { title: data.title } : {}),
+            ...(data.description !== undefined
+                ? { description: data.description }
+                : {}),
+            ...(data.status !== undefined ? { status: data.status } : {}),
+            ...(data.dueDate !== undefined
+                ? { dueDate: new Date(data.dueDate) }
+                : {}),
             ownerId,
         },
         include: taskInclude,
     });
 
-    emitTaskUpdated(updatedTask);
+    const actor = await getActor(user.id);
+
+    emitTaskUpdated({
+        ...updatedTask,
+        actor,
+    });
 
     return updatedTask;
 };
@@ -231,9 +260,13 @@ export const deleteTaskService = async (id: number, user: AuthUser) => {
         },
     });
 
+    const actor = await getActor(user.id)
+
     emitTaskDeleted({
         id: existingTask.id,
-        ownerId: existingTask.ownerId
+        title: existingTask.title,
+        ownerId: existingTask.ownerId,
+        actor,
     })
 
     return existingTask;
