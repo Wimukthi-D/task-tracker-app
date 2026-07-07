@@ -33,6 +33,8 @@ import { connectSocket } from "../realtime/socket";
 import StackedSnackbar, {
     type AppNotification,
 } from "../components/StackedSnackbar";
+import { getUsersApi } from "../api/user.api";
+import type { AssignableUser } from "../types/user.types";
 
 const statusOptions: TaskStatus[] = ["TODO", "IN_PROGRESS", "COMPLETED"];
 
@@ -54,6 +56,7 @@ const TasksPage = () => {
     const [pageError, setPageError] = useState("");
 
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
 
     const loadTasks = useCallback(async () => {
         if (!accessToken) {
@@ -83,6 +86,24 @@ const TasksPage = () => {
     useEffect(() => {
         loadTasks();
     }, [loadTasks]);
+
+    useEffect(() => {
+        const loadAssignableUsers = async () => {
+            if (!accessToken || !isAdmin) {
+                setAssignableUsers([]);
+                return;
+            }
+
+            try {
+                const response = await getUsersApi(accessToken);
+                setAssignableUsers(response.data);
+            } catch {
+                addNotification("Failed to load assigned user list.", "error");
+            }
+        };
+
+        loadAssignableUsers();
+    }, [accessToken, isAdmin]);
 
     const addNotification = (
         message: string,
@@ -141,7 +162,7 @@ const TasksPage = () => {
         });
 
         socket.on("task:deleted", async (payload) => {
-            addNotification(`Task #${payload.id} was deleted.`, "warning");
+            addNotification(`Task #${payload.id} was deleted by ${payload.actor}.`, "warning");
             await loadTasks();
         });
 
@@ -269,12 +290,20 @@ const TasksPage = () => {
 
                         {isAdmin && (
                             <TextField
-                                label="Filter by Assigned User"
-                                type="number"
+                                select
+                                label="Assigned User"
                                 value={ownerFilter}
                                 onChange={(event) => handleOwnerFilterChange(event.target.value)}
                                 sx={{ minWidth: { md: 220 } }}
-                            />
+                            >
+                                <MenuItem value="">All Users</MenuItem>
+
+                                {assignableUsers.map((assignedUser) => (
+                                    <MenuItem key={assignedUser.id} value={String(assignedUser.id)}>
+                                        {assignedUser.name}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         )}
 
                         <TextField
@@ -318,6 +347,7 @@ const TasksPage = () => {
                             key={task.id}
                             task={task}
                             isAdmin={isAdmin}
+                            assignableUsers={assignableUsers}
                             onUpdate={handleUpdateTask}
                             onDelete={handleDeleteTask}
                         />

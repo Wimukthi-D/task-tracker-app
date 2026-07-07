@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
+import ConfirmDialog from "./common/ConfirmDialog";
 import {
     AppBar,
     Box,
@@ -16,72 +18,90 @@ type AppLayoutProps = {
 
 const AppLayout = ({ children }: AppLayoutProps) => {
     const { user, logout } = useAuth();
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+
+        try {
+            await logout();
+            setIsLogoutConfirmOpen(false);
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
 
     return (
-        <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
-            <AppBar position="sticky">
-                <Toolbar
-                    sx={{
-                        minHeight: { xs: 64, sm: 72 },
-                        px: { xs: 2, sm: 3 },
-                        gap: 2,
-                    }}
-                >
-                    <Typography
-                        variant="h6"
+        <>
+            <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
+                <AppBar position="sticky">
+                    <Toolbar
                         sx={{
-                            flexGrow: 1,
-                            fontSize: { xs: "1rem", sm: "1.25rem" },
+                            minHeight: { xs: 64, sm: 72 },
+                            px: { xs: 2, sm: 3 },
+                            gap: 2,
                         }}
                     >
-                        Task Tracker
-                    </Typography>
-
-                    <Stack
-                        direction="row"
-                        spacing={1.5}
-                        sx={{
-                            alignItems: "center",
-                            display: { xs: "none", sm: "flex" },
-                        }}
-                    >
-                        <Box sx={{ textAlign: "right" }}>
-                            <Typography
-                                variant="body2"
-                                sx={{
-                                    fontWeight: 600,
-                                }}
-                            >
-                                {user?.name}
-                            </Typography>
-
-                            <Typography
-                                variant="caption"
-                                sx={{
-                                    color: "text.secondary",
-                                }}
-                            >
-                                {user?.role}
-                            </Typography>
-                        </Box>
+                        <Typography
+                            variant="h6"
+                            sx={{
+                                flexGrow: 1,
+                                fontSize: { xs: "1rem", sm: "1.25rem" },
+                            }}
+                        >
+                            Task Tracker
+                        </Typography>
 
                         <Stack
-                            direction="column"
+                            direction="row"
                             spacing={1.5}
                             sx={{
                                 alignItems: "center",
-                                justifyContent:"center",
-                                display: { xs: "flex", sm: "flex" },
+                                display: { xs: "none", sm: "flex" },
                             }}
                         >
-                            <Button variant="outlined" size="small" onClick={logout}>
-                                Logout
-                            </Button>
+                            <Box sx={{ textAlign: "right" }}>
+                                <Typography
+                                    variant="body2"
+                                    sx={{
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    {user?.name}
+                                </Typography>
+
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        color: "text.secondary",
+                                    }}
+                                >
+                                    {user?.role}
+                                </Typography>
+                            </Box>
+
+                            <Stack
+                                direction="column"
+                                spacing={1.5}
+                                sx={{
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    display: { xs: "flex", sm: "flex" },
+                                }}
+                            >
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => setIsLogoutConfirmOpen(true)}
+                                >
+                                    Logout
+                                </Button>
+                            </Stack>
+
                         </Stack>
 
-                    </Stack>
-
-                    {/* <Button
+                        {/* <Button
                         variant="outlined"
                         size="small"
                         onClick={logout}
@@ -91,17 +111,28 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                     >
                         Logout
                     </Button> */}
-                </Toolbar>
-            </AppBar>
+                    </Toolbar>
+                </AppBar>
 
-            <Container
-                sx={{
-                    py: { xs: 3, sm: 4 },
-                }}
-            >
-                {children}
-            </Container>
-        </Box>
+                <Container
+                    sx={{
+                        py: { xs: 3, sm: 4 },
+                    }}
+                >
+                    {children}
+                </Container>
+            </Box>
+            <ConfirmDialog
+                open={isLogoutConfirmOpen}
+                title="Logout?"
+                description="Are you sure you want to logout from your account?"
+                confirmText="Logout"
+                confirmColor="warning"
+                isLoading={isLoggingOut}
+                onClose={() => setIsLogoutConfirmOpen(false)}
+                onConfirm={handleLogout}
+            />
+        </>
     );
 };
 

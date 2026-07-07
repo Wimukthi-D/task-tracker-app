@@ -4,6 +4,7 @@ import type { Task } from "../types/task.types";
 type TaskDeletedPayload = {
     id: number;
     ownerId: number;
+    actor: string;
 };
 
 type ServerToClientEvents = {
