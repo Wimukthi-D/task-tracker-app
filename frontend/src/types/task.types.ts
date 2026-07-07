@@ -27,13 +27,11 @@ export type UpdateTaskRequest = Partial<CreateTaskRequest>;
 export type TaskListResponse = {
     success: boolean;
     message: string;
-    data: {
-        tasks: Task[];
-        pagination: {
-            page: number;
-            limit: number;
-            total: number;
-            totalPages: number;
-        };
+    data: Task[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
     };
 };
