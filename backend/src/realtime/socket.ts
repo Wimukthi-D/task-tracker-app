@@ -123,22 +123,31 @@ export const getIO = () => {
 }
 
 export const emitTaskCreated = (task: TaskEventPayload) => {
-    getIO()
-        .to(userRoom(task.ownerId))
+    if (!io) {
+        return;
+    }
+
+    io.to(userRoom(task.ownerId))
         .to(adminRoom)
         .emit("task:created", task);
 };
 
 export const emitTaskUpdated = (task: TaskEventPayload) => {
-    getIO()
-        .to(userRoom(task.ownerId))
+    if (!io) {
+        return;
+    }
+
+    io.to(userRoom(task.ownerId))
         .to(adminRoom)
         .emit("task:updated", task);
 };
 
 export const emitTaskDeleted = (task: TaskDeletedEventPayload) => {
-    getIO()
-        .to(userRoom(task.ownerId))
+    if (!io) {
+        return;
+    }
+
+    io.to(userRoom(task.ownerId))
         .to(adminRoom)
         .emit("task:deleted", task);
 };

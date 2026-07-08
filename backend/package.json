@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test": "cross-env NODE_ENV=test vitest run --no-file-parallelism",
+    "test:watch": "cross-env NODE_ENV=test vitest",
+    "db:push:test": "cross-env NODE_ENV=test prisma db push"
   },
   "keywords": [],
   "author": "",
@@ -33,9 +36,13 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/ms": "^2.1.0",
     "@types/node": "^26.1.0",
+    "@types/supertest": "^7.2.0",
+    "cross-env": "^10.1.0",
     "prisma": "^7.8.0",
     "socket.io-client": "^4.8.3",
+    "supertest": "^7.2.2",
     "tsx": "^4.23.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   }
 }
