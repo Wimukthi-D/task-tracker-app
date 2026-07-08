@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
     Accordion,
     AccordionDetails,
@@ -76,11 +76,6 @@ const TaskListItem = ({
 
     const [form, setForm] = useState<TaskEditForm>(initialValues);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-
-    useEffect(() => {
-        setForm(initialValues);
-        setIsEditing(false);
-    }, [initialValues]);
 
     const hasChanges =
         form.title !== initialValues.title ||
@@ -242,7 +237,10 @@ const TaskListItem = ({
                                 <Button
                                     variant="outlined"
                                     size="small"
-                                    onClick={() => setIsEditing(true)}
+                                    onClick={() => {
+                                        setForm(initialValues);
+                                        setIsEditing(true)
+                                    }}
                                 >
                                     Edit
                                 </Button>

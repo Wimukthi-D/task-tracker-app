@@ -1,6 +1,4 @@
 import {
-    createContext,
-    useContext,
     useEffect,
     useMemo,
     useState,
@@ -13,18 +11,7 @@ import type {
     User,
 } from "../types/auth.types";
 import { disconnectSocket } from "../realtime/socket";
-
-type AuthContextValue = {
-    user: User | null;
-    accessToken: string | null;
-    isAuthenticated: boolean;
-    isLoading: boolean;
-    login: (data: LoginRequest) => Promise<void>;
-    register: (data: RegisterRequest) => Promise<void>;
-    logout: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+import { AuthContext } from "./auth.context";
 
 type AuthProviderProps = {
     children: ReactNode;
@@ -74,7 +61,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             }
         };
 
-        restoreSession();
+        void restoreSession();
     }, []);
 
     const value = useMemo(
@@ -91,14 +78,4 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-
-    if (!context) {
-        throw new Error("useAuth must be used inside AuthProvider");
-    }
-
-    return context;
 };

@@ -16,7 +16,7 @@ import AddIcon from "@mui/icons-material/Add";
 import AppLayout from "../components/AppLayout";
 import TaskCreateDialog from "../components/tasks/TaskCreateDialog";
 import TaskListItem from "../components/tasks/TaskListItem";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import {
     createTaskApi,
     deleteTaskApi,
@@ -83,9 +83,29 @@ const TasksPage = () => {
         }
     }, [accessToken, page, limit, statusFilter, ownerFilter, isAdmin]);
 
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
-        loadTasks();
+        void loadTasks();
     }, [loadTasks]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    const addNotification = useCallback(
+        (
+            message: string,
+            severity: AppNotification["severity"] = "info"
+        ) => {
+            setNotifications((prev) => [
+                ...prev,
+                {
+                    id: Date.now() + Math.random(),
+                    message,
+                    severity,
+                    open: true,
+                },
+            ]);
+        },
+        []
+    );
 
     useEffect(() => {
         const loadAssignableUsers = async () => {
@@ -103,22 +123,7 @@ const TasksPage = () => {
         };
 
         loadAssignableUsers();
-    }, [accessToken, isAdmin]);
-
-    const addNotification = (
-        message: string,
-        severity: AppNotification["severity"] = "info"
-    ) => {
-        setNotifications((prev) => [
-            ...prev,
-            {
-                id: Date.now() + Math.random(),
-                message,
-                severity,
-                open: true,
-            },
-        ]);
-    };
+    }, [accessToken, isAdmin, addNotification]);
 
     const closeNotification = (id: number) => {
         setNotifications((prev) =>
@@ -173,7 +178,7 @@ const TasksPage = () => {
             socket.off("task:updated");
             socket.off("task:deleted");
         };
-    }, [accessToken, loadTasks]);
+    }, [accessToken, loadTasks, addNotification]);
 
     const handleCreateTask = async (data: CreateTaskRequest) => {
         if (!accessToken) {

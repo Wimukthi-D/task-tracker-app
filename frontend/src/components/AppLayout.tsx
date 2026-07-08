@@ -10,7 +10,7 @@ import {
     Toolbar,
     Typography,
 } from "@mui/material";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 type AppLayoutProps = {
     children: ReactNode;
