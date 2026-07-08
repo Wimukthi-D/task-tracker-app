@@ -395,6 +395,7 @@ const TasksPage = () => {
             <TaskCreateDialog
                 open={isCreateOpen}
                 isAdmin={isAdmin}
+                assignableUsers={assignableUsers}
                 onClose={() => setIsCreateOpen(false)}
                 onCreate={handleCreateTask}
             />

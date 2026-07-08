@@ -15,10 +15,12 @@ import type {
     CreateTaskRequest,
     TaskStatus,
 } from "../../types/task.types";
+import type { AssignableUser } from "../../types/user.types";
 
 type TaskCreateDialogProps = {
     open: boolean;
     isAdmin: boolean;
+    assignableUsers: AssignableUser[];
     onClose: () => void;
     onCreate: (data: CreateTaskRequest) => Promise<void>;
 };
@@ -35,6 +37,7 @@ const statusOptions: TaskStatus[] = ["TODO", "IN_PROGRESS", "COMPLETED"];
 const TaskCreateDialog = ({
     open,
     isAdmin,
+    assignableUsers,
     onClose,
     onCreate,
 }: TaskCreateDialogProps) => {
@@ -77,8 +80,11 @@ const TaskCreateDialog = ({
             nextErrors.dueDate = "Due date is required.";
         }
 
-        if (isAdmin && ownerId && Number(ownerId) <= 0) {
-            nextErrors.ownerId = "Owner ID must be a valid number.";
+        if (
+            isAdmin &&
+            !assignableUsers.some((user) => String(user.id) === ownerId)
+        ) {
+            nextErrors.ownerId = "Please select an assigned user.";
         }
 
         setErrors(nextErrors);
@@ -101,7 +107,7 @@ const TaskCreateDialog = ({
                 description: description.trim(),
                 status,
                 dueDate,
-                ownerId: isAdmin && ownerId ? Number(ownerId) : undefined,
+                ownerId: isAdmin ? Number(ownerId) : undefined,
             });
 
             resetForm();
@@ -146,6 +152,8 @@ const TaskCreateDialog = ({
                             onChange={(event) => setDescription(event.target.value)}
                             multiline
                             minRows={3}
+                            helperText=" "
+
                         />
 
                         <TextField
@@ -153,6 +161,7 @@ const TaskCreateDialog = ({
                             label="Status"
                             value={status}
                             onChange={(event) => setStatus(event.target.value as TaskStatus)}
+                            helperText=" "
                         >
                             {statusOptions.map((option) => (
                                 <MenuItem key={option} value={option}>
@@ -181,19 +190,27 @@ const TaskCreateDialog = ({
 
                         {isAdmin && (
                             <TextField
-                                label="Owner ID"
-                                type="number"
+                                select
+                                label="Assigned User"
                                 value={ownerId}
                                 onChange={(event) => {
                                     setOwnerId(event.target.value);
                                     setErrors((prev) => ({ ...prev, ownerId: undefined }));
                                 }}
                                 error={Boolean(errors.ownerId)}
-                                helperText={
-                                    errors.ownerId ||
-                                    "Optional. Leave empty to use backend default behavior."
-                                }
-                            />
+                                helperText={errors.ownerId || " "}
+                                required
+                            >
+                                <MenuItem value="" disabled>
+                                    Select assigned user
+                                </MenuItem>
+
+                                {assignableUsers.map((assignedUser) => (
+                                    <MenuItem key={assignedUser.id} value={String(assignedUser.id)}>
+                                        {assignedUser.name}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         )}
                     </Stack>
                 </DialogContent>
