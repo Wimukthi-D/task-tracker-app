@@ -1,0 +1,101 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - main
+            - dev
+    pull_request:
+        branches:
+            - main
+            - dev
+
+jobs:
+    backend:
+        name: Backend Tests
+        runs-on: ubuntu-latest
+
+        services:
+            mysql:
+                image: mysql:8.0
+                env:
+                    MYSQL_ROOT_PASSWORD: root
+                    MYSQL_DATABASE: task_tracker_test
+                ports:
+                    - 3306:3306
+                options: >-
+                    --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+                    --health-interval=10s
+                    --health-timeout=5s
+                    --health-retries=10
+
+        defaults:
+            run:
+                working-directory: backend
+
+        env:
+            NODE_ENV: test
+            PORT: 5001
+            DATABASE_URL: mysql://root:root@127.0.0.1:3306/task_tracker_test
+            JWT_ACCESS_SECRET: test_access_secret
+            ACCESS_TOKEN_EXPIRES_IN: 15m
+            REFRESH_TOKEN_EXPIRES_IN_DAYS: 7
+            REFRESH_TOKEN_COOKIE_NAME: refreshToken
+            REFRESH_TOKEN_PEPPER: test_refresh_token_pepper
+            CORS_ORIGIN: http://localhost:5173
+            FRONTEND_URL: http://localhost:5173
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+                  cache-dependency-path: backend/package-lock.json
+
+            - name: Install backend dependencies
+              run: npm ci
+
+            - name: Sync test database
+              run: npm run db:push:test
+
+            - name: Run backend tests
+              run: npm test
+
+            - name: Build backend
+              run: npm run build
+
+    frontend:
+        name: Frontend Checks
+        runs-on: ubuntu-latest
+
+        defaults:
+            run:
+                working-directory: frontend
+
+        env:
+            VITE_API_URL: http://localhost:5001/api
+            VITE_SOCKET_URL: http://localhost:5001
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+                  cache-dependency-path: frontend/package-lock.json
+
+            - name: Install frontend dependencies
+              run: npm ci
+
+            - name: Run frontend lint
+              run: npm run lint
+
+            - name: Build frontend
+              run: npm run build
