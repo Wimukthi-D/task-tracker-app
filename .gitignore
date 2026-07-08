@@ -4,3 +4,7 @@ dist
 build
 .DS_Store
 coverage
+
+backend/dist/
+frontend/dist/
+*.tsbuildinfo
