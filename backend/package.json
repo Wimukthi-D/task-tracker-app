@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "test": "cross-env NODE_ENV=test vitest run --no-file-parallelism",
     "test:watch": "cross-env NODE_ENV=test vitest",
-    "db:push:test": "cross-env NODE_ENV=test prisma db push"
+    "db:push:test": "cross-env NODE_ENV=test prisma db push",
+    "seed":"tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
