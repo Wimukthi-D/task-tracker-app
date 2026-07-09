@@ -1,15 +1,15 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../app.js";
-import { authHeader, createTaskPayload, registerTestUser } from "./helpers.js";
+import { authHeader, createTaskPayload, createTestUserAndLogin } from "./helpers.js";
 
 describe("Task listing, filtering, and pagination", () => {
     it("should return only own tasks for normal user", async () => {
-        const userOne = await registerTestUser("USER", {
+        const userOne = await createTestUserAndLogin("USER", {
             email: "listone@test.com",
         });
 
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "listtwo@test.com",
         });
 
@@ -35,11 +35,11 @@ describe("Task listing, filtering, and pagination", () => {
     });
 
     it("should allow admin to view all tasks", async () => {
-        const admin = await registerTestUser("ADMIN");
-        const userOne = await registerTestUser("USER", {
+        const admin = await createTestUserAndLogin("ADMIN");
+        const userOne = await createTestUserAndLogin("USER", {
             email: "adminlistone@test.com",
         });
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "adminlisttwo@test.com",
         });
 
@@ -64,8 +64,8 @@ describe("Task listing, filtering, and pagination", () => {
     });
 
     it("should filter tasks by status", async () => {
-        const admin = await registerTestUser("ADMIN");
-        const normalUser = await registerTestUser("USER");
+        const admin = await createTestUserAndLogin("ADMIN");
+        const normalUser = await createTestUserAndLogin("USER");
 
         await request(app)
             .post("/api/tasks")
@@ -101,11 +101,11 @@ describe("Task listing, filtering, and pagination", () => {
     });
 
     it("should allow admin to filter tasks by ownerId", async () => {
-        const admin = await registerTestUser("ADMIN");
-        const userOne = await registerTestUser("USER", {
+        const admin = await createTestUserAndLogin("ADMIN");
+        const userOne = await createTestUserAndLogin("USER", {
             email: "ownerone@test.com",
         });
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "ownertwo@test.com",
         });
 
@@ -141,11 +141,11 @@ describe("Task listing, filtering, and pagination", () => {
     });
 
     it("should prevent normal user from filtering another user's tasks", async () => {
-        const userOne = await registerTestUser("USER", {
+        const userOne = await createTestUserAndLogin("USER", {
             email: "filterone@test.com",
         });
 
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "filtertwo@test.com",
         });
 
@@ -158,7 +158,7 @@ describe("Task listing, filtering, and pagination", () => {
     });
 
     it("should return pagination metadata", async () => {
-        const normalUser = await registerTestUser("USER");
+        const normalUser = await createTestUserAndLogin("USER");
 
         await request(app)
             .post("/api/tasks")

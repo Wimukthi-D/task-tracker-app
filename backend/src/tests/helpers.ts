@@ -1,7 +1,8 @@
 import request from "supertest";
+import bcrypt from "bcryptjs";
 import app from "../app.js";
-
-type TestUserRole = "USER" | "ADMIN";
+import prisma from "../config/prisma.js";
+import type { Role } from "../generated/prisma/client.js";
 
 export const testPassword = "password123";
 
@@ -14,7 +15,6 @@ const getCookies = (setCookieHeader: string | string[] | undefined): string[] =>
 };
 
 export const registerTestUser = async (
-    role: TestUserRole = "USER",
     override?: Partial<{
         name: string;
         email: string;
@@ -25,12 +25,9 @@ export const registerTestUser = async (
     const random = Math.floor(Math.random() * 100000);
 
     const payload = {
-        name: override?.name ?? `${role} Test User`,
-        email:
-            override?.email ??
-            `${role.toLowerCase()}-${timestamp}-${random}@test.com`,
+        name: override?.name ?? "User Test User",
+        email: override?.email ?? `user-${timestamp}-${random}@test.com`,
         password: override?.password ?? testPassword,
-        role,
     };
 
     const response = await request(app).post("/api/auth/register").send(payload);
@@ -40,6 +37,46 @@ export const registerTestUser = async (
         user: response.body.data?.user,
         accessToken: response.body.data?.accessToken as string,
         payload,
+        cookies: getCookies(response.headers["set-cookie"]),
+    };
+};
+
+export const createTestUserAndLogin = async (
+    role: Role = "USER",
+    override?: Partial<{
+        name: string;
+        email: string;
+        password: string;
+    }>
+) => {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 100000);
+    const password = override?.password ?? testPassword;
+
+    const user = await prisma.user.create({
+        data: {
+            name: override?.name ?? `${role} Test User`,
+            email: override?.email ?? `${role.toLowerCase()}-${timestamp}-${random}@test.com`,
+            password: await bcrypt.hash(password, 10),
+            role,
+        },
+    });
+
+    const response = await request(app).post("/api/auth/login").send({
+        email: user.email,
+        password,
+    });
+
+    return {
+        response,
+        user,
+        accessToken: response.body.data?.accessToken as string,
+        payload: {
+            name: user.name,
+            email: user.email,
+            password,
+            role,
+        },
         cookies: getCookies(response.headers["set-cookie"]),
     };
 };

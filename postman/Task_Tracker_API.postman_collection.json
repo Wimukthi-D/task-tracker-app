@@ -47,7 +47,7 @@
     },
     {
       "name": "Auth",
-      "description": "Authentication requests. Register/login requests save access tokens automatically.",
+      "description": "Authentication requests. Public registration creates normal USER accounts only. Login requests can be used for seeded/admin-created accounts.",
       "item": [
         {
           "name": "Register User",
@@ -69,10 +69,10 @@
                 "register"
               ]
             },
-            "description": "Register a normal USER account and save userAccessToken.",
+            "description": "Register a normal USER account and save userAccessToken. Public registration does not create ADMIN users.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"user{{$timestamp}}@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"USER\"\n}",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"user{{$timestamp}}@test.com\",\n  \"password\": \"password123\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -93,6 +93,7 @@
                   "",
                   "const json = pm.response.json();",
                   "pm.expect(json.success).to.eql(true);",
+                  "pm.expect(json.data.user.role).to.eql(\"USER\");",
                   "",
                   "if (json.data && json.data.accessToken) {",
                   "    pm.environment.set(\"userAccessToken\", json.data.accessToken);",
@@ -101,64 +102,6 @@
                   "if (json.data && json.data.user) {",
                   "    pm.environment.set(\"userId\", json.data.user.id);",
                   "    pm.environment.set(\"userEmail\", json.data.user.email);",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Register Admin",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{apiUrl}}/auth/register",
-              "host": [
-                "{{apiUrl}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
-            },
-            "description": "Register an ADMIN account and save adminAccessToken.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin{{$timestamp}}@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"ADMIN\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 201 or 200\", function () {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "});",
-                  "",
-                  "const json = pm.response.json();",
-                  "pm.expect(json.success).to.eql(true);",
-                  "",
-                  "if (json.data && json.data.accessToken) {",
-                  "    pm.environment.set(\"adminAccessToken\", json.data.accessToken);",
-                  "}",
-                  "",
-                  "if (json.data && json.data.user) {",
-                  "    pm.environment.set(\"adminId\", json.data.user.id);",
-                  "    pm.environment.set(\"adminEmail\", json.data.user.email);",
                   "}"
                 ]
               }
@@ -243,7 +186,7 @@
                 "login"
               ]
             },
-            "description": "Login an admin user. Update adminEmail if using an existing account.",
+            "description": "Login a seeded or admin-created ADMIN account. Public registration creates USER accounts only.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"password123\"\n}",

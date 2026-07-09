@@ -5,7 +5,7 @@ import { authHeader, loginTestUser, registerTestUser, testPassword } from "./hel
 
 describe("Auth API", () => {
   it("should register a new user", async () => {
-    const { response } = await registerTestUser("USER", {
+    const { response } = await registerTestUser({
       name: "Normal User",
       email: "normal@test.com",
     });
@@ -20,8 +20,22 @@ describe("Auth API", () => {
     expect(response.headers["set-cookie"]).toBeDefined();
   });
 
+  it("should always register public users with USER role", async () => {
+    const response = await request(app).post("/api/auth/register").send({
+      name: "Public Admin Attempt",
+      email: "public-admin-attempt@test.com",
+      password: testPassword,
+      role: "ADMIN",
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.user.email).toBe("public-admin-attempt@test.com");
+    expect(response.body.data.user.role).toBe("USER");
+  });
+
   it("should not register duplicate email", async () => {
-    await registerTestUser("USER", {
+    await registerTestUser({
       name: "First User",
       email: "duplicate@test.com",
     });
@@ -38,7 +52,7 @@ describe("Auth API", () => {
   });
 
   it("should login with valid credentials", async () => {
-    const registered = await registerTestUser("USER", {
+    const registered = await registerTestUser({
       email: "login@test.com",
     });
 
@@ -55,7 +69,7 @@ describe("Auth API", () => {
   });
 
   it("should reject login with invalid password", async () => {
-    const registered = await registerTestUser("USER");
+    const registered = await registerTestUser();
 
     const response = await request(app).post("/api/auth/login").send({
       email: registered.payload.email,
@@ -67,7 +81,7 @@ describe("Auth API", () => {
   });
 
   it("should return current user with valid access token", async () => {
-    const { accessToken, user } = await registerTestUser("USER");
+    const { accessToken, user } = await registerTestUser();
 
     const response = await request(app)
       .get("/api/auth/me")
@@ -87,7 +101,7 @@ describe("Auth API", () => {
   });
 
   it("should refresh access token using refresh token cookie", async () => {
-    const registered = await registerTestUser("USER");
+    const registered = await registerTestUser();
 
     const response = await request(app)
       .post("/api/auth/refresh-token")
@@ -100,7 +114,7 @@ describe("Auth API", () => {
   });
 
   it("should logout and reject using the same refresh token again", async () => {
-    const registered = await registerTestUser("USER");
+    const registered = await registerTestUser();
 
     const logoutResponse = await request(app)
       .post("/api/auth/logout")
@@ -118,7 +132,7 @@ describe("Auth API", () => {
   });
 
   it("should logout all user sessions", async () => {
-    const registered = await registerTestUser("USER");
+    const registered = await registerTestUser();
 
     const response = await request(app)
       .post("/api/auth/logout-all")

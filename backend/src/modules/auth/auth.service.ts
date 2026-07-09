@@ -99,7 +99,7 @@ export const registerUser = async (data: RegisterInput, meta?: RequestMeta) => {
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      role: data.role || "USER",
+      role: "USER",
     },
     select: {
       id: true,

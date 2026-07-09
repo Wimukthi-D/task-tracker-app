@@ -1,21 +1,21 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../app.js";
-import { authHeader, registerTestUser } from "./helpers.js";
+import { authHeader, createTestUserAndLogin } from "./helpers.js";
 
 describe("Users API", () => {
     it("should allow admin to retrieve normal users only", async () => {
-        const admin = await registerTestUser("ADMIN", {
+        const admin = await createTestUserAndLogin("ADMIN", {
             name: "Admin User",
             email: "admin@test.com",
         });
 
-        const userOne = await registerTestUser("USER", {
+        const userOne = await createTestUserAndLogin("USER", {
             name: "Alpha User",
             email: "alpha@test.com",
         });
 
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             name: "Beta User",
             email: "beta@test.com",
         });
@@ -48,7 +48,7 @@ describe("Users API", () => {
     });
 
     it("should reject normal user from retrieving users", async () => {
-        const normalUser = await registerTestUser("USER");
+        const normalUser = await createTestUserAndLogin("USER");
 
         const response = await request(app)
             .get("/api/users")

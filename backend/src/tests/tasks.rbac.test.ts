@@ -1,11 +1,11 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../app.js";
-import { authHeader, createTaskPayload, registerTestUser } from "./helpers.js";
+import { authHeader, createTaskPayload, createTestUserAndLogin } from "./helpers.js";
 
 describe("Task RBAC", () => {
     it("should allow user to create own task", async () => {
-        const normalUser = await registerTestUser("USER");
+        const normalUser = await createTestUserAndLogin("USER");
 
         const response = await request(app)
             .post("/api/tasks")
@@ -20,11 +20,11 @@ describe("Task RBAC", () => {
     });
 
     it("should prevent user from creating task for another owner", async () => {
-        const userOne = await registerTestUser("USER", {
+        const userOne = await createTestUserAndLogin("USER", {
             email: "userone@test.com",
         });
 
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "usertwo@test.com",
         });
 
@@ -42,11 +42,11 @@ describe("Task RBAC", () => {
     });
 
     it("should prevent user from viewing another user's task", async () => {
-        const userOne = await registerTestUser("USER", {
+        const userOne = await createTestUserAndLogin("USER", {
             email: "owner@test.com",
         });
 
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "other@test.com",
         });
 
@@ -64,8 +64,8 @@ describe("Task RBAC", () => {
     });
 
     it("should allow admin to view another user's task", async () => {
-        const admin = await registerTestUser("ADMIN");
-        const normalUser = await registerTestUser("USER");
+        const admin = await createTestUserAndLogin("ADMIN");
+        const normalUser = await createTestUserAndLogin("USER");
 
         const createdTask = await request(app)
             .post("/api/tasks")
@@ -83,8 +83,8 @@ describe("Task RBAC", () => {
     });
 
     it("should allow admin to create a task for a selected user", async () => {
-        const admin = await registerTestUser("ADMIN");
-        const normalUser = await registerTestUser("USER");
+        const admin = await createTestUserAndLogin("ADMIN");
+        const normalUser = await createTestUserAndLogin("USER");
 
         const response = await request(app)
             .post("/api/tasks")
@@ -103,8 +103,8 @@ describe("Task RBAC", () => {
     });
 
     it("should allow admin to update another user's task", async () => {
-        const admin = await registerTestUser("ADMIN");
-        const normalUser = await registerTestUser("USER");
+        const admin = await createTestUserAndLogin("ADMIN");
+        const normalUser = await createTestUserAndLogin("USER");
 
         const createdTask = await request(app)
             .post("/api/tasks")
@@ -126,11 +126,11 @@ describe("Task RBAC", () => {
     });
 
     it("should prevent user from updating another user's task", async () => {
-        const userOne = await registerTestUser("USER", {
+        const userOne = await createTestUserAndLogin("USER", {
             email: "taskowner@test.com",
         });
 
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "blocked@test.com",
         });
 
@@ -151,11 +151,11 @@ describe("Task RBAC", () => {
     });
 
     it("should prevent user from changing task owner", async () => {
-        const userOne = await registerTestUser("USER", {
+        const userOne = await createTestUserAndLogin("USER", {
             email: "first@test.com",
         });
 
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "second@test.com",
         });
 
@@ -176,7 +176,7 @@ describe("Task RBAC", () => {
     });
 
     it("should allow user to delete own task", async () => {
-        const normalUser = await registerTestUser("USER");
+        const normalUser = await createTestUserAndLogin("USER");
 
         const createdTask = await request(app)
             .post("/api/tasks")
@@ -193,11 +193,11 @@ describe("Task RBAC", () => {
     });
 
     it("should prevent user from deleting another user's task", async () => {
-        const userOne = await registerTestUser("USER", {
+        const userOne = await createTestUserAndLogin("USER", {
             email: "deleteowner@test.com",
         });
 
-        const userTwo = await registerTestUser("USER", {
+        const userTwo = await createTestUserAndLogin("USER", {
             email: "deleteblocked@test.com",
         });
 
