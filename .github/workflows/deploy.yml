@@ -18,18 +18,22 @@ jobs:
         steps:
             - name: Configure SSH
               run: |
-                  mkdir -p ~/.ssh
-                  printf '%s' "${{ secrets.ORACLE_SSH_KEY_BASE64 }}" | base64 -d > ~/.ssh/oracle_deploy_key
-                  chmod 600 ~/.ssh/oracle_deploy_key
-                  ssh-keygen -y -f ~/.ssh/oracle_deploy_key > /dev/null
-                  ssh-keyscan -H "${{ secrets.ORACLE_HOST }}" >> ~/.ssh/known_hosts
+                  set -e
+                    mkdir -p ~/.ssh
+                    printf '%s' "${{ secrets.ORACLE_SSH_KEY_BASE64 }}" | base64 --decode > ~/.ssh/oracle_deploy_key
+                    chmod 600 ~/.ssh/oracle_deploy_key
+                    echo "Checking decoded private key..."
+                    test -s ~/.ssh/oracle_deploy_key
+                    ssh-keygen -y -f ~/.ssh/oracle_deploy_key > /dev/null
+                    echo "Private key is valid."
+                    ssh-keyscan -H "${{ secrets.ORACLE_HOST }}" >> ~/.ssh/known_hosts
 
             - name: Deploy on Oracle server
               run: |
                   ssh -i ~/.ssh/oracle_deploy_key "${{ secrets.ORACLE_USER }}@${{ secrets.ORACLE_HOST }}" << 'EOF'
-                    set -e
-                    cd "${{ secrets.ORACLE_PROJECT_PATH }}"
-                    git pull origin main
-                    docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
-                    docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+                   set -e
+                   cd "${{ secrets.ORACLE_PROJECT_PATH }}"
+                   git pull origin main
+                   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+                   docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
                   EOF
