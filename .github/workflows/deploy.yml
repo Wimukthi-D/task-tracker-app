@@ -33,7 +33,9 @@ jobs:
                   ssh -i ~/.ssh/oracle_deploy_key "${{ secrets.ORACLE_USER }}@${{ secrets.ORACLE_HOST }}" << 'EOF'
                    set -e
                    cd "${{ secrets.ORACLE_PROJECT_PATH }}"
-                   git pull origin main
+                   git fetch origin main
+                   git checkout main
+                   git reset --hard origin/main
                    docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
                    docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
                   EOF
